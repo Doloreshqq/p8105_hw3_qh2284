@@ -8,6 +8,141 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(dplyr)
+library(ggplot2)
 ```
 
 ## Problem 1
+
+```{r}
+# load the dataset
+library(p8105.datasets)
+data("instacart")
+```
+
+**Write a short description of the dataset, noting the size and structure of the data, describing some key variables, and giving illustrative examples of observations.**
+
+```{r}
+?instacart
+
+user_num = instacart %>%
+  distinct(user_id) %>%
+  count()
+```
+
+The dataset contains `r nrow(instacart)` observations of `r user_num` unique users, where each row in the dataset is a product from an order.
+
+There are `r ncol(instacart)` variables in this dataset:
+
+-   `order_id`: order identifier, int type
+
+-   `product_id`: product identifier, int type
+
+-   `add_to_cart_order`: order where each product was added to cart, int type
+
+-   `reordered`: 1 - reordered by this user (ordered in the past), 0 - not reorder, int type
+
+-   `user_id`: customer identifier, int type
+
+-   `eval_set`: which evaluation set this order belongs in (train), char type
+
+-   `order_number`: the order sequence number for this user (1=first, n=nth), int type
+
+-   `order_dow`: the day of the week on which the order was placed, int type
+
+-   `order_hour_of_day`: the hour of the day on which the order was placed, int type
+
+-   `days_since_prior_order`: days since the last order, capped at 30, NA if `order_number`=1, int type
+
+-   `product_name`: name of the product, char type
+
+-   `aisle_id`: aisle identifier, int type
+
+-   `department_id`: department identifier, int type
+
+-   `aisle`: the name of the aisle, char type
+
+-   `department`: the name of the department, char type
+
+**How many aisles are there, and which aisles are the most items ordered from?**
+
+```{r}
+# count for the number of aisles
+ai_num = instacart %>%
+  distinct(aisle) %>%
+  nrow()
+
+# find the most items ordered
+aisle_most = instacart %>%
+  group_by(aisle) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n)) %>%
+  head(1) %>%
+  pull(aisle)
+```
+
+There's total `r ai_num` aisles, among which `r aisle_most` are the most items ordered from.
+
+**Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.**
+
+```{r}
+# filter the aisles
+more_than_1e4 = instacart %>%
+  group_by(aisle) %>%
+  summarise(n = n()) %>%
+  filter(n > 10000) %>%
+  arrange(desc(n))
+
+# create the plot
+plot_aisle = ggplot(more_than_1e4, aes(x = reorder(aisle, n), y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +  
+  labs(title = "Number of items ordered in each aisle",
+       x = "Aisle",
+       y = "Number of items ordered") +
+  theme_minimal()
+
+plot_aisle
+```
+
+```{r}
+# save the plot
+ggsave("num of aisle.png", plot = plot_aisle)
+```
+
+We first group the aisles and count for each aisles. Then we filter the data. To make the plots more readable, we reorder the dataset to make it follow a descending order according to the number of aisles.
+
+**Make a table showing the three most popular items in each of the aisles "baking ingredients", "dog food care", and "packaged vegetables fruits". Include the number of times each item is ordered in your table.**
+
+```{r}
+# create the table for top 3 popular items
+popular_item = instacart %>%
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>%
+  group_by(aisle, product_name) %>%
+  summarise(ordered_num = n()) %>%
+  arrange(aisle, desc(ordered_num)) %>%
+  slice_head(n = 3)
+
+popular_item
+```
+
+According to the table, we could observe that the top 3 popular in "baking ingredients" are `Light Brown Sugar`, `Pure Baking Soda`, `Cane Sugar`. The top 3 popular in "dog food care" are `Snack Sticks Chicken & Rice Recipe Dog Treats`, `Organix Chicken & Brown Rice Recipe`, `Small Dog Biscuits`. The top 3 popular in "packaged vegetables fruits" are `Organic Baby Spinach`, `Organic Raspberries`, `Organic Blueberries`.
+
+**Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).**
+
+```{r}
+# first filter the table
+table_mean_hour <- instacart %>%
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+  # based on each day of the week
+  group_by(product_name, order_dow) %>%
+  # calculate the mean
+  summarise(mean_hour = mean(order_hour_of_day)) %>%
+  spread(key = order_dow, value = mean_hour)
+
+table_mean_hour
+```
+
+In this problem, we group the table based on the product name and the day of the week. Then we use summarise() to calculate the mean hour of orders for these two items.
+
+------------------------------------------------------------------------
