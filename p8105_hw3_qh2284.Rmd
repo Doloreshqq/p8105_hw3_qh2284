@@ -209,7 +209,7 @@ In 2010, `r states_2010` could be observed at 7 or more locations.
 # construct only excellent dataset
 brfss_excellent = brfss_new %>%
   filter(response == "Excellent") %>%
-  group_by(year, state, loc_desc) %>%
+  group_by(year, state) %>%
   summarise(avg_data = mean(data_value, na.rm = T))
 
 # create spaghetti plot
@@ -221,26 +221,112 @@ ggplot(brfss_excellent, aes(x = year, y = avg_data, group = state, color = state
   theme_minimal()
 ```
 
-Comment:
+Comment: We could observe that the average data value various among the year within different states. There aren't a tendency (increasing/decreasing) among the year, but fluctuate.
 
 **Make a two-panel plot showing, for the years 2006, and 2010, distribution of `data_value` for responses (\"Poor\" to \"Excellent\") among locations in NY State.**
 
 ```{r}
 # filter the year for only 2006 and 2010
-plot_ny = brfss_new %>%
+data_ny = brfss_new %>%
   filter(year == 2006 | year == 2010) %>%
   filter(state == "NY") 
 
-ggplot(plot_ny, aes(x = response, y = data_value)) +
-  geom_violin() +  # or geom_violin() for a violin plot
+plot_ny = ggplot(data_ny, aes(x = response, y = data_value)) +
+  geom_boxplot() +  
   facet_wrap(~ year, ncol = 2) +
   labs(title = "Distribution of Data Value by Response in NY State for 2006 and 2010",
        x = "Response",
        y = "Data Value") +
   theme_minimal()
   
+plot_ny
+```
+
+Comment: For 2006 and 2010, we could observe similar distribution based on the response. They both have the largest average data value when the response is "very good", and the smallest average data value when the response is "poor". Also, we could observe that the "poor" group have the least variance in both year.
+
+------------------------------------------------------------------------
+
+## Problem 3
+
+**Load, tidy, merge, and otherwise organize the data sets. Your final dataset should include all originally observed variables; exclude participants less than 21 years of age, and those with missing demographic data; and encode data with reasonable variable classes (i.e. not numeric, and using factors with the ordering of tables and plots in mind).**
+
+```{r}
+# load dataset
+accel = read_csv("./dataset/nhanes_accel.csv")
+covar = read_csv("./dataset/nhanes_covar.csv", skip = 4)
+```
+
+```{r}
+# merge the dataset byb SEQN
+combine_data = inner_join(covar, accel, by = "SEQN") %>%
+  # filter year greater equal than 21
+  filter(age >= 21) %>%
+  # encode data with reasonable variable classes
+  mutate(sex = if_else(sex == 1, "male", "female")) %>%
+  mutate(education = case_when(
+    education == 1 ~ "Less than high school",
+    education == 2 ~ "High school equivalent",
+    education == 3 ~ "More than high school"
+  )) %>%
+  mutate(sex = factor(sex, levels = c("male","female"), ordered = TRUE)) %>%
+  mutate(education = factor(education, levels = c("Less than high school", "High school equivalent", "More than high school"), ordered = TRUE))  %>%
+  # remove those with missing demographic data
+  filter(!is.na(age) & !is.na(sex) & !is.na(education))
+```
+
+**Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.**
+
+```{r}
+# create the table
+edu_sex_table <- combine_data %>%
+  group_by(sex, education) %>%
+  summarise(count = n()) %>%
+  spread(key = sex, value = count)
+
+edu_sex_table
+```
+
+We could observe that there are about half of the male and female have the education level of more than high school. We could simply observe the distribution of education within the male and female.
+
+```{r}
+# visualization
+age_plot = ggplot(combine_data, aes(x = education, y = age, fill = sex)) +
+  geom_boxplot() +
+  labs(title = "Age Distributions by Sex and Education",
+       x = "Education Level",
+       y = "Age") +
+  theme_minimal() +
+  scale_fill_manual(values = c("male" = "lightblue", "female" = "lightpink"))
+
+age_plot
+```
+
+Comment: According to the figure, we could observe that the average age of male and female who have education level of more than high school is smaller than other two groups. Within the same education level, female commonly have larger average age (except the education level of more than high school). And the male's age spread more than the female's (males' age has larger variance).
+
+**Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.**
+
+```{r}
+# calculate the total activity
+total_ac = combine_data %>%
+  mutate(total = rowSums(select(., min1:min1440), na.rm = TRUE)) %>%
+  select(SEQN, sex, age, BMI, education, total)
+
+ggplot(total_ac, aes(x = age, y = total, color = sex)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth() +
+  facet_wrap(~ education) +
+  labs(title = "Total Activity by Age, Sex, and Education Level",
+       x = "Age",
+       y = "Total Activity") +
+  theme_minimal() +
+  scale_color_manual(values = c("male" = "blue", "female" = "brown"))
 ```
 
 Comment:
 
-------------------------------------------------------------------------
+**Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.**
+
+```{r}
+# create a new table
+
+```
