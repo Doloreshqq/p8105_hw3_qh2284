@@ -153,11 +153,11 @@ In this problem, we group the table based on the product name and the day of the
 
 -   **format the data to use appropriate variable names;**
 
--   **focus on the \"Overall Health\" topic**
+-   **focus on the "Overall Health" topic**
 
--   **include only responses from \"Excellent\" to \"Poor\"**
+-   **include only responses from "Excellent" to "Poor"**
 
--   **organize responses as a factor taking levels ordered from \"Poor\" to \"Excellent\"**
+-   **organize responses as a factor taking levels ordered from "Poor" to "Excellent"**
 
 ```{r}
 # load the dataset
@@ -199,11 +199,11 @@ states_2010 = brfss_new %>%
   pull(state)
 ```
 
-In 2002, `r states_2002` could be observed at 7 or more locations.
+In 2002, `r states_2002` could be observed at 7 or more locations, totally `r length(states_2002)` states.
 
-In 2010, `r states_2010` could be observed at 7 or more locations.
+In 2010, `r states_2010` could be observed at 7 or more locations, totally `r length(states_2010)` states.
 
-**Construct a dataset that is limited to `Excellent` responses, and contains, year, state, and a variable that averages the `data_value` across locations within a state. Make a \"spaghetti\" plot of this average value over time within a state (that is, make a plot showing a line for each state across years -- the `geom_line` geometry and `group` aesthetic will help).**
+**Construct a dataset that is limited to `Excellent` responses, and contains, year, state, and a variable that averages the `data_value` across locations within a state. Make a "spaghetti" plot of this average value over time within a state (that is, make a plot showing a line for each state across years -- the `geom_line` geometry and `group` aesthetic will help).**
 
 ```{r}
 # construct only excellent dataset
@@ -223,7 +223,7 @@ ggplot(brfss_excellent, aes(x = year, y = avg_data, group = state, color = state
 
 Comment: We could observe that the average data value various among the year within different states. There aren't a tendency (increasing/decreasing) among the year, but fluctuate.
 
-**Make a two-panel plot showing, for the years 2006, and 2010, distribution of `data_value` for responses (\"Poor\" to \"Excellent\") among locations in NY State.**
+**Make a two-panel plot showing, for the years 2006, and 2010, distribution of `data_value` for responses ("Poor" to "Excellent") among locations in NY State.**
 
 ```{r}
 # filter the year for only 2006 and 2010
@@ -257,7 +257,7 @@ covar = read_csv("./dataset/nhanes_covar.csv", skip = 4)
 ```
 
 ```{r}
-# merge the dataset byb SEQN
+# merge the dataset by SEQN
 combine_data = inner_join(covar, accel, by = "SEQN") %>%
   # filter year greater equal than 21
   filter(age >= 21) %>%
@@ -271,7 +271,15 @@ combine_data = inner_join(covar, accel, by = "SEQN") %>%
   mutate(sex = factor(sex, levels = c("male","female"), ordered = TRUE)) %>%
   mutate(education = factor(education, levels = c("Less than high school", "High school equivalent", "More than high school"), ordered = TRUE))  %>%
   # remove those with missing demographic data
-  filter(!is.na(age) & !is.na(sex) & !is.na(education))
+  filter(!is.na(age) & !is.na(sex) & !is.na(education)) %>%
+  janitor::clean_names()
+```
+
+```{r}
+# create a new table for tidy (the old table is for some plots)
+combine_longer = combine_data %>%
+  pivot_longer(min1:min1440,names_to = "time", values_to = "mins_act") %>%
+  na.omit()
 ```
 
 **Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.**
@@ -309,17 +317,19 @@ Comment: According to the figure, we could observe that the average age of male 
 # calculate the total activity
 total_ac = combine_data %>%
   mutate(total = rowSums(select(., min1:min1440), na.rm = TRUE)) %>%
-  select(SEQN, sex, age, BMI, education, total)
+  select(seqn, sex, age, bmi, education, total)
 
-ggplot(total_ac, aes(x = age, y = total, color = sex)) +
+act_plot = ggplot(total_ac, aes(x = age, y = total, color = sex)) +
   geom_point(alpha = 0.5) +
-  geom_smooth() +
+  geom_smooth(se = FALSE) +
   facet_wrap(~ education) +
   labs(title = "Total Activity by Age, Sex, and Education Level",
        x = "Age",
        y = "Total Activity") +
   theme_minimal() +
   scale_color_manual(values = c("male" = "blue", "female" = "brown"))
+
+act_plot
 ```
 
 Comment:
@@ -327,6 +337,17 @@ Comment:
 **Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.**
 
 ```{r}
-# create a new table
+# create the plot
+plot_24h = ggplot(combine_longer, aes(x = time, y = mins_act, color = sex)) +
+  geom_line() +
+  facet_wrap(~ education) +
+  geom_smooth(se = FALSE) +
+  labs(title = "24-hour Activity Time Courses for Each Education Level and Sex",
+       x = "Time",
+       y = "Activity")+
+  theme_minimal()
 
+plot_24h
 ```
+
+Comment:
