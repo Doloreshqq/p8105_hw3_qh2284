@@ -102,7 +102,7 @@ plot_aisle = ggplot(more_than_1e4, aes(x = reorder(aisle, n), y = n)) +
        y = "Number of items ordered") +
   theme_minimal()
 
-plot_aisle
+print(plot_aisle)
 ```
 
 ```{r}
@@ -123,7 +123,7 @@ popular_item = instacart %>%
   arrange(aisle, desc(ordered_num)) %>%
   slice_head(n = 3)
 
-popular_item
+print(popular_item)
 ```
 
 According to the table, we could observe that the top 3 popular in "baking ingredients" are `Light Brown Sugar`, `Pure Baking Soda`, `Cane Sugar`. The top 3 popular in "dog food care" are `Snack Sticks Chicken & Rice Recipe Dog Treats`, `Organix Chicken & Brown Rice Recipe`, `Small Dog Biscuits`. The top 3 popular in "packaged vegetables fruits" are `Organic Baby Spinach`, `Organic Raspberries`, `Organic Blueberries`.
@@ -140,7 +140,7 @@ table_mean_hour <- instacart %>%
   summarise(mean_hour = mean(order_hour_of_day)) %>%
   spread(key = order_dow, value = mean_hour)
 
-table_mean_hour
+print(table_mean_hour)
 ```
 
 In this problem, we group the table based on the product name and the day of the week. Then we use summarise() to calculate the mean hour of orders for these two items.
@@ -271,7 +271,7 @@ combine_data = inner_join(covar, accel, by = "SEQN") %>%
   mutate(sex = factor(sex, levels = c("male","female"), ordered = TRUE)) %>%
   mutate(education = factor(education, levels = c("Less than high school", "High school equivalent", "More than high school"), ordered = TRUE))  %>%
   # remove those with missing demographic data
-  filter(!is.na(age) & !is.na(sex) & !is.na(education)) %>%
+  filter(!is.na(age) & !is.na(sex) & !is.na(education) & !is.na(BMI)) %>%
   janitor::clean_names()
 ```
 
@@ -315,9 +315,9 @@ Comment: According to the figure, we could observe that the average age of male 
 
 ```{r}
 # calculate the total activity
-total_ac = combine_data %>%
-  mutate(total = rowSums(select(., min1:min1440), na.rm = TRUE)) %>%
-  select(seqn, sex, age, bmi, education, total)
+total_ac = combine_longer %>%
+  group_by(seqn,sex,age,bmi,education) %>%
+  summarise(total = sum(mins_act)) 
 
 act_plot = ggplot(total_ac, aes(x = age, y = total, color = sex)) +
   geom_point(alpha = 0.5) +
@@ -344,7 +344,7 @@ time_new = combine_longer %>%
 
 # create the plot
 plot_24h = ggplot(time_new, aes(x = time_mins, y = mins_act, color = sex)) +
-  geom_point() +
+  geom_point(alpha = 0.5) +
   facet_wrap(~ education, nrow = 2) +
   geom_smooth(se = FALSE) +
   labs(title = "24-hour Activity Time Courses for Each Education Level and Sex",
